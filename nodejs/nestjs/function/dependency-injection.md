@@ -228,15 +228,168 @@ export class RequestScopedService {
 
 ---
 
-## 5. 결론
+## 4. 고급 의존성 주입 패턴
 
-NestJS의 DI는 다음과 같은 이점을 제공합니다:
-1. **객체 생성 및 관리의 자동화**:
-   - 객체 생성 로직을 간소화하고, 의존성을 자동으로 관리.
-2. **유연한 프로바이더 설정**:
-   - 싱글톤, 요청 기반, 또는 트랜지언트 스코프 지원.
-3. **모듈화된 설계**:
-   - 코드 재사용성을 극대화하고, 유지보수성을 향상.
+---
 
-DI는 NestJS의 핵심 설계 철학 중 하나로, 대규모 애플리케이션을 체계적으로 관리하는 데 필수적인 도구입니다.  
-NestJS의 DI 컨테이너를 활용하여 강력하고 유연한 애플리케이션을 구축하세요!
+### 4.1. 팩토리 프로바이더
+
+#### 동적 값 생성
+
+```typescript
+import { Module } from '@nestjs/common';
+
+@Module({
+  providers: [
+    {
+      provide: 'DYNAMIC_VALUE',
+      useFactory: () => {
+        return Math.random(); // 동적으로 생성된 값
+      },
+    },
+  ],
+})
+export class AppModule {}
+```
+
+#### 사용
+
+```typescript
+import { Injectable, Inject } from '@nestjs/common';
+
+@Injectable()
+export class DynamicService {
+  constructor(@Inject('DYNAMIC_VALUE') private readonly value: number) {}
+
+  getValue(): number {
+    return this.value;
+  }
+}
+```
+
+---
+
+### 4.2. Value 프로바이더
+
+#### 정적 값 주입
+
+```typescript
+import { Module } from '@nestjs/common';
+
+@Module({
+  providers: [
+    {
+      provide: 'CONFIG',
+      useValue: { apiKey: '123456' },
+    },
+  ],
+})
+export class AppModule {}
+```
+
+---
+
+### 4.3. Class 프로바이더
+
+#### 클래스를 직접 주입
+
+```typescript
+import { Injectable, Module } from '@nestjs/common';
+
+@Injectable()
+export class RealService {
+  doSomething(): string {
+    return 'Real implementation';
+  }
+}
+
+@Module({
+  providers: [
+    {
+      provide: 'SERVICE_INTERFACE',
+      useClass: RealService,
+    },
+  ],
+})
+export class AppModule {}
+```
+
+---
+
+### 4.4. 인터셉터와 의존성 주입
+
+#### 예제: 요청 로깅
+
+```typescript
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+} from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+
+@Injectable()
+export class LoggingInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    console.log('Before...');
+    return next.handle().pipe(tap(() => console.log('After...')));
+  }
+}
+```
+
+---
+
+## 5. 도구와 철학
+
+---
+
+### 철학
+1. **단일 책임 원칙(Single Responsibility Principle)**:
+   - 각 클래스는 하나의 책임만 가져야 함.
+2. **유연성**:
+   - 서비스와 컨트롤러 간의 강한 결합을 제거.
+3. **테스트 가능성**:
+   - Mock 서비스를 사용하여 의존성을 쉽게 대체.
+
+---
+
+### 도구
+1. **InversifyJS**:
+   - TypeScript용 DI 컨테이너.
+2. **TypeORM**:
+   - NestJS와 완벽히 통합된 ORM, DI 지원.
+3. **Mocking Libraries**:
+   - 테스트 시 의존성을 쉽게 대체.
+
+---
+
+## 6. 실제 사용 사례: 다중 데이터베이스 연결
+
+### 시나리오
+- 여러 데이터베이스에 연결하여 동적으로 사용할 서비스 주입.
+
+#### 다중 데이터베이스 서비스
+
+```typescript
+@Module({
+  providers: [
+    {
+      provide: 'DATABASE_CONNECTION',
+      useFactory: async () => {
+        const connection = await createConnection();
+        return connection;
+      },
+    },
+  ],
+})
+export class DatabaseModule {}
+```
+
+---
+
+## 7. 결론
+
+NestJS의 의존성 주입은 애플리케이션 설계에서 필수적인 요소로, 모듈성, 유연성, 테스트 가능성을 극대화합니다.  
+고급 패턴과 철학을 활용하여 확장 가능하고 유지보수 가능한 시스템을 설계하세요.
